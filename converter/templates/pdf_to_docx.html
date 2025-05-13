@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="converter-container">
+    <div class="converter-header">
+        <img src="/static/images/pdf-to-docx-icon.png" alt="PDF to DOCX" class="converter-icon">
+        <h2>PDF to DOCX Converter</h2>
+        <p class="subtitle">Convert your PDF documents to editable Word files</p>
+    </div>
+
+    <form id="conversion-form" method="post" enctype="multipart/form-data" class="converter-form">
+        {% csrf_token %}
+        
+        <div class="file-upload-area">
+            <label for="pdf-file-input" class="file-upload-label">
+                <img src="/static/images/upload-icon.svg" alt="Upload" class="upload-icon">
+                <span id="file-name">Choose PDF file or drag here</span>
+                <input type="file" id="pdf-file-input" name="pdf_file" accept=".pdf" required>
+            </label>
+            <div id="file-error" class="error-message"></div>
+        </div>
+
+        <button type="submit" id="convert-button" class="btn-convert">
+            <span id="button-text">Convert to DOCX</span>
+            <div id="loading-spinner" class="spinner hidden"></div>
+        </button>
+    </form>
+
+    <div id="progress-container" class="progress-container hidden">
+        <div class="progress-info">
+            <span>Converting your file...</span>
+            <span id="progress-percentage">0%</span>
+        </div>
+        <div class="progress-bar">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+        </div>
+    </div>
+
+    {% if converted %}
+    <div id="download-section" class="download-section">
+        <img src="/static/images/success-icon.svg" alt="Success" class="success-icon">
+        <p>Conversion complete!</p>
+        <a href="{{ docx_url }}" class="btn-download" download>
+            <img src="/static/images/download-icon.svg" alt="Download">
+            Download DOCX File
+        </a>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="error-section">
+        <img src="/static/images/error-icon.svg" alt="Error" class="error-icon">
+        <p class="error-message">{{ error }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('pdf-file-input');
+    const fileNameSpan = document.getElementById('file-name');
+    const errorDiv = document.getElementById('file-error');
+    const form = document.getElementById('conversion-form');
+    const convertButton = document.getElementById('convert-button');
+    const buttonText = document.getElementById('button-text');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBarFill = document.getElementById('progress-bar-fill');
+    const progressPercentage = document.getElementById('progress-percentage');
+
+    // File input change handler
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            const file = this.files[0];
+            if (file.type !== 'application/pdf') {
+                errorDiv.textContent = 'Please upload a PDF file only.';
+                convertButton.disabled = true;
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                errorDiv.textContent = 'File size should be less than 10MB.';
+                convertButton.disabled = true;
+                return;
+            }
+            
+            errorDiv.textContent = '';
+            convertButton.disabled = false;
+            fileNameSpan.textContent = file.name;
+        }
+    });
+
+    // Drag and drop functionality
+    const uploadArea = document.querySelector('.file-upload-label');
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            const event = new Event('change');
+            fileInput.dispatchEvent(event);
+        }
+    });
+
+    // Form submission handler
+    form.addEventListener('submit', function(e) {
+        const file = fileInput.files[0];
+        if (!file || file.type !== 'application/pdf') {
+            e.preventDefault();
+            errorDiv.textContent = 'Please select a valid PDF file.';
+            return;
+        }
+
+        // Show loading state
+        buttonText.textContent = 'Converting...';
+        loadingSpinner.classList.remove('hidden');
+        convertButton.disabled = true;
+        progressContainer.classList.remove('hidden');
+
+        // Simulate progress (in a real app, you'd use WebSockets or polling)
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += Math.random() * 10;
+            if (progress > 90) clearInterval(progressInterval);
+            if (progress > 100) progress = 100;
+            
+            progressBarFill.style.width = `${progress}%`;
+            progressPercentage.textContent = `${Math.round(progress)}%`;
+        }, 300);
+    });
+});
+</script>
+
+<style>
+.converter-container {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.converter-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.converter-icon {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 1rem;
+}
+
+.subtitle {
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+.converter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.file-upload-area {
+    border: 2px dashed #ccc;
+    border-radius: 6px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.file-upload-area.dragover {
+    border-color: #4a90e2;
+    background-color: #f8faff;
+}
+
+.file-upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.upload-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+#pdf-file-input {
+    display: none;
+}
+
+.btn-convert {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background-color 0.3s;
+}
+
+.btn-convert:hover {
+    background-color: #3a7bc8;
+}
+
+.btn-convert:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 3px solid white;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.hidden {
+    display: none;
+}
+
+.progress-container {
+    margin-top: 1.5rem;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.progress-bar {
+    height: 8px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: #4a90e2;
+    width: 0%;
+    transition: width 0.3s;
+}
+
+.download-section {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background-color: #f8faff;
+    border-radius: 6px;
+    border: 1px solid #e0e7ff;
+}
+
+.success-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+.btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    margin-top: 1rem;
+    transition: background-color 0.3s;
+}
+
+.btn-download:hover {
+    background-color: #3e8e41;
+}
+
+.error-message {
+    color: #e74c3c;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.error-section {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: #fef2f2;
+    border-radius: 6px;
+    border: 1px solid #fee2e2;
+}
+
+.error-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}
